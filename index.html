@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12734F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png" sizes="64x64" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="안전일지">
+<title>사진 한 장 안전관리 일지</title>
+<style>
+:root{
+  --ink:#16202B; --ink-soft:#5B6773; --line:#D7DDE3; --concrete:#E9ECEF; --surface:#FFFFFF;
+  --safe:#12734F; --safe-dark:#0D5A3D; --warn:#E8A317; --danger:#C7362B; --radius:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--concrete);color:var(--ink);
+  font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,sans-serif;
+  font-size:16px;line-height:1.5;padding-bottom:84px;-webkit-text-size-adjust:100%;
+}
+input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit}
+
+.topbar{
+  position:sticky;top:0;z-index:40;background:var(--safe);color:#fff;
+  padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0));
+  display:flex;align-items:center;gap:12px;box-shadow:0 1px 0 rgba(0,0,0,.12);
+}
+.cross{width:30px;height:30px;flex:none;position:relative}
+.cross::before,.cross::after{content:"";position:absolute;background:#fff;border-radius:2px}
+.cross::before{left:11px;top:2px;width:8px;height:26px}
+.cross::after{top:11px;left:2px;height:8px;width:26px}
+.topbar h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.02em}
+.topbar .site{font-size:12.5px;opacity:.85;margin-top:1px;cursor:pointer}
+.topbar .site.unset{
+  background:rgba(255,255,255,.18);border-radius:6px;padding:2px 8px;
+  display:inline-block;font-weight:700;opacity:1;
+}
+#setupBar{background:#FFF8E6;border:1px solid #F0D48A}
+#setupBar h2::before{background:var(--warn)}
+#setupBar .row{margin-top:10px}
+#setupBar .row .btn{flex:0 0 92px}
+
+main{max-width:760px;margin:0 auto;padding:14px 12px 20px}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card > h2{font-size:14px;margin:0 0 12px;font-weight:700;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+.card > h2::before{content:"";width:4px;height:15px;background:var(--safe);border-radius:2px;flex:none}
+.card > h2 em{font-style:normal;font-size:11.5px;color:var(--danger);font-weight:700}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin:0 0 6px}
+input[type=text],input[type=datetime-local],input[type=month],select,textarea{
+  width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none;
+}
+textarea{resize:vertical;min-height:64px;line-height:1.45}
+input:focus,select:focus,textarea:focus{border-color:var(--safe);box-shadow:0 0 0 3px rgba(18,115,79,.15)}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.row{display:flex;gap:10px}
+.row > *{flex:1;min-width:0}
+
+/* 사진 */
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.slot{position:relative;border-radius:12px;overflow:hidden;border:2px dashed var(--line);background:#F6F8F9}
+.slot.filled{border-style:solid}
+.slot.before{border-color:var(--warn)}
+.slot.after{border-color:var(--safe)}
+.slot .tag{position:absolute;top:0;left:0;z-index:2;color:#fff;font-size:12px;font-weight:700;padding:5px 12px;border-bottom-right-radius:10px}
+.slot.before .tag{background:var(--warn);color:#3A2A00}
+.slot.after .tag{background:var(--safe)}
+.slot .box{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--ink-soft);font-size:13px}
+.slot img{width:100%;height:100%;object-fit:cover;display:block}
+.slot .cam{font-size:30px;line-height:1}
+.slot .kill{position:absolute;right:6px;top:6px;z-index:3;background:rgba(0,0,0,.62);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600}
+.slot .pick{display:flex;border-top:1px solid var(--line);background:#fff}
+.slot .pbtn{flex:1;position:relative;text-align:center;padding:11px 4px;font-size:13.5px;font-weight:700;cursor:pointer}
+.slot .pbtn + .pbtn{border-left:1px solid var(--line)}
+.slot.before .pbtn{color:#8A6100}
+.slot.after .pbtn{color:var(--safe-dark)}
+.slot .pbtn:active{background:#F1F3F5}
+.hidden-input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+
+/* 재해유형 드롭다운 */
+.typePick{display:flex;align-items:center;gap:11px}
+.typePick .dot{width:18px;height:18px;border-radius:50%;flex:none;background:#DEE2E6;box-shadow:0 0 0 3px rgba(0,0,0,.05)}
+.typePick select{font-weight:700;padding:14px 12px}
+
+/* 칩 */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13.5px;cursor:pointer}
+.chip:active{transform:scale(.97)}
+.chip.sel{background:var(--safe);border-color:var(--safe);color:#fff;font-weight:600}
+.chip.warn.sel{background:var(--warn);border-color:var(--warn);color:#3A2A00}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;background:#fff;padding:12px 4px;font-weight:600;font-size:14px;color:var(--ink-soft)}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button.on{color:#fff}
+.seg button[data-g="긴급"].on{background:var(--danger)}
+.seg button[data-g="주의"].on{background:var(--warn);color:#3A2A00}
+.seg button[data-g="일반"].on{background:var(--safe)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:11px;padding:13px 14px;font-weight:600;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--safe);border-color:var(--safe);color:#fff}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.line-danger{color:var(--danger);border-color:#EFC9C5}
+.btn.wide{width:100%}
+.btn.sm{padding:9px 11px;font-size:13.5px;border-radius:9px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.actions .full{grid-column:1/-1}
+
+/* 목록 */
+.rec{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:10px}
+.rec .head{display:flex;gap:10px;padding:12px;align-items:flex-start}
+.rec .thumbs{display:flex;gap:4px;flex:none}
+.rec .thumbs img{width:56px;height:56px;object-fit:cover;border-radius:8px;background:var(--concrete)}
+.rec .meta{flex:1;min-width:0}
+.rec .when{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.rec .haz{font-weight:700;font-size:15px;margin:2px 0;word-break:break-all}
+.rec .act{font-size:13.5px;color:var(--ink-soft);word-break:break-all}
+.rec .foot{display:flex;gap:6px;padding:0 12px 12px;flex-wrap:wrap}
+.tbadge{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;color:#fff;margin-right:5px}
+.badge{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;color:#fff;flex:none;align-self:flex-start}
+.badge.긴급{background:var(--danger)}
+.badge.주의{background:var(--warn);color:#3A2A00}
+.badge.일반{background:var(--safe)}
+.empty{text-align:center;color:var(--ink-soft);padding:44px 16px;font-size:14px}
+.stat{display:flex;gap:8px;margin-bottom:12px}
+.stat div{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11.5px;color:var(--ink-soft)}
+.tally{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.tally .t{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-top:7px}
+.tally .t:first-of-type{margin-top:0}
+.tally .t .nm{width:82px;flex:none;font-weight:600}
+.tally .t .bar{flex:1;height:9px;background:var(--concrete);border-radius:5px;overflow:hidden}
+.tally .t .bar i{display:block;height:100%;border-radius:5px}
+.tally .t .n{width:26px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+.tally h3{font-size:13px;margin:0 0 10px;color:var(--ink-soft)}
+
+#saveBar{
+  position:fixed;left:0;right:0;z-index:60;display:none;
+  bottom:calc(66px + env(safe-area-inset-bottom,0));
+  background:#fff;border-top:1px solid var(--line);padding:10px 12px;
+  box-shadow:0 -4px 14px rgba(0,0,0,.10);
+}
+body.setmode #saveBar{display:block}
+body.setmode{padding-bottom:158px}
+#saveBar .btn{width:100%;padding:15px;font-size:16px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0)}
+.tabbar button{flex:1;border:0;background:none;padding:10px 2px 12px;font-size:11.5px;font-weight:600;color:var(--ink-soft);display:flex;flex-direction:column;gap:3px;align-items:center}
+.tabbar button .ic{font-size:19px;line-height:1}
+.tabbar button.on{color:var(--safe)}
+
+#gate{position:fixed;inset:0;z-index:200;background:var(--safe);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#gate.off{display:none}
+.gcard{background:#fff;border-radius:18px;padding:26px 20px 22px;width:100%;max-width:370px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.gmark{width:56px;height:56px;border-radius:15px;background:var(--safe);margin:0 auto 14px;position:relative}
+.gmark::before,.gmark::after{content:"";position:absolute;background:#fff;border-radius:2px}
+.gmark::before{left:24px;top:12px;width:8px;height:32px}
+.gmark::after{top:24px;left:12px;height:8px;width:32px}
+.gcard h2{font-size:18px;margin:0 0 6px;letter-spacing:-.02em}
+.gcard p.gdesc{font-size:13px;color:var(--ink-soft);margin:0 0 16px;line-height:1.5}
+.gcard input,.gcard select{margin-bottom:10px}
+.gcard input[type=password]{text-align:center;letter-spacing:.2em;font-weight:700}
+.gcard label.f{text-align:left}
+.gkeep{display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;color:var(--ink-soft);margin:4px 0 14px}
+.gkeep input{width:18px;height:18px;margin:0}
+.gmsg{font-size:13px;font-weight:700;color:var(--danger);min-height:19px;margin-top:10px;line-height:1.4}
+.glink{background:none;border:0;color:var(--ink-soft);font-size:13px;font-weight:600;text-decoration:underline;margin-top:12px;cursor:pointer}
+.gwarn{background:#FFF4F3;border:1px solid #F3C9C4;color:#8E241B;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.45}
+.aState{background:#F1F3F5;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.5;color:var(--ink);margin-top:4px}
+.aState b{font-variant-numeric:tabular-nums}
+.appfoot{
+  background:#DDE2E6;color:#4A555F;border:1px solid #CBD2D8;
+  border-radius:var(--radius);padding:16px 14px;margin-top:4px;
+  text-align:center;font-size:13px;line-height:1.6;font-weight:600;
+}
+.appfoot a{
+  display:inline-block;margin-top:9px;color:#3A2A00;font-weight:800;font-size:15px;
+  text-decoration:none;background:var(--warn);border-radius:999px;padding:11px 22px;
+  letter-spacing:.01em;box-shadow:0 2px 0 rgba(0,0,0,.15);
+}
+.appfoot a:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.gfoot{font-size:12px;color:var(--ink-soft);margin-top:16px}
+.gfoot a{
+  display:inline-block;color:var(--safe-dark);font-weight:800;text-decoration:none;
+  background:#FFF3D6;border:1px solid #F0D48A;border-radius:999px;padding:5px 13px;margin-left:4px;
+}
+.extbox{background:#F1F3F5;border:1px solid var(--line);border-radius:11px;padding:12px;margin-top:16px;text-align:center}
+.extlab{font-size:12.5px;color:var(--ink-soft);line-height:1.45;margin-bottom:7px}
+.extno{
+  font-size:27px;font-weight:800;letter-spacing:.16em;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-bottom:10px;
+}
+.extbox input{text-align:center;letter-spacing:.12em;font-weight:700}
+.pwrow{display:flex;gap:8px;align-items:stretch}
+.pwrow input{flex:1;min-width:0}
+.pwrow .btn{flex:0 0 66px}
+.extno.copy{cursor:pointer}
+.extno.copy:active{opacity:.55}
+.extrow{display:flex;gap:8px;margin:9px 0 0}
+.extrow select{flex:0 0 108px}
+.extrow .btn{flex:1}
+.extlink{background:none;border:0;padding:6px 8px 0;font-size:12px;color:var(--ink-soft);text-decoration:underline}
+.extalt{display:flex;gap:4px;justify-content:center}
+.dbar{display:none;background:#FFF8E6;border:1px solid #F0D48A;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
+.dbar.on{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.dbar.hot{background:#FDECEA;border-color:#F0B5AE}
+.dbar .t{font-size:13px;line-height:1.45}
+.dbar .t b{color:var(--danger)}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.22s;z-index:99;max-width:92vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+body.setmode #toast{bottom:170px}
+
+#modal{position:fixed;inset:0;background:rgba(10,16,22,.86);z-index:80;display:none;flex-direction:column;padding:14px}
+#modal.on{display:flex}
+#modal .wrap{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center}
+#modal img{max-width:100%;max-height:100%;border-radius:10px;background:#fff}
+#modal .bar{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:12px;padding-bottom:env(safe-area-inset-bottom,0)}
+.mini{font-size:12px;color:var(--ink-soft);margin-top:6px;line-height:1.45}
+hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+
+#sheet{display:none}
+.sheetpage{background:#fff;padding:12mm 10mm;margin:0 auto 10px;max-width:210mm;border:1px solid var(--line)}
+.sheettitle{text-align:center;font-size:19px;font-weight:800;letter-spacing:.06em;margin:0 0 3mm}
+.sheetsub{text-align:center;font-size:12px;color:var(--ink-soft);margin:0 0 6mm}
+.blk{border:1px solid #444;margin-bottom:6mm;break-inside:avoid;page-break-inside:avoid}
+.blk .ph{display:grid;grid-template-columns:1fr 1fr}
+.blk .ph figure{margin:0;border-right:1px solid #444}
+.blk .ph figure:last-child{border-right:0}
+.blk .ph figcaption{font-size:11px;font-weight:700;text-align:center;padding:2px;border-bottom:1px solid #444;background:#F1F3F5}
+.blk .ph img{width:100%;height:52mm;object-fit:cover;display:block}
+.blk table{width:100%;border-collapse:collapse;font-size:11.5px}
+.blk td{border-top:1px solid #444;padding:2mm 3mm;vertical-align:top;word-break:break-all}
+.blk td.k{width:22mm;background:#F1F3F5;font-weight:700;text-align:center;border-right:1px solid #444}
+@media print{
+  body{background:#fff;padding:0}
+  .topbar,.tabbar,main,#toast,#modal{display:none !important}
+  #sheet{display:block !important}
+  .sheetpage{border:0;margin:0;max-width:none;padding:0;page-break-after:always}
+  .sheetpage:last-child{page-break-after:auto}
+  @page{size:A4 portrait;margin:12mm 10mm}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="cross"></div>
+  <div>
+    <h1>사진 한 장 안전관리 일지</h1>
+    <div class="site" id="siteLabel">현장명 미설정</div>
+  </div>
+</div>
+
+<main>
+
+<div class="dbar" id="dBar">
+  <div class="t" id="dBarTxt"></div>
+  <button class="btn sm primary" id="dBarGo" style="flex:0 0 auto">연장하기</button>
+</div>
+
+<!-- ══════════ 작성 ══════════ -->
+<section class="panel on" id="p-write">
+  <div class="card" id="setupBar" style="display:none">
+    <h2>현장명을 먼저 넣어 주세요</h2>
+    <div class="mini" style="margin:0">여기에 넣은 현장명이 보고서 이미지와 사진대지 머리말에 찍힙니다.</div>
+    <div class="row">
+      <input type="text" id="quickSite" placeholder="현장명 입력">
+      <button class="btn primary" id="quickSave">저장</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>현장 사진</h2>
+    <div class="shots">
+      <div class="slot before" id="slotB">
+        <span class="tag">조치 전</span>
+        <div class="box" id="boxB"><span class="cam">📷</span>사진 없음</div>
+        <div class="pick">
+          <label class="pbtn">촬영<input class="hidden-input" type="file" accept="image/*" capture="environment" id="camB"></label>
+          <label class="pbtn">앨범에서<input class="hidden-input" type="file" accept="image/*" id="galB"></label>
+        </div>
+        <button class="kill" id="killB" style="display:none" type="button">지우기</button>
+      </div>
+      <div class="slot after" id="slotA">
+        <span class="tag">조치 후</span>
+        <div class="box" id="boxA"><span class="cam">📷</span>사진 없음</div>
+        <div class="pick">
+          <label class="pbtn">촬영<input class="hidden-input" type="file" accept="image/*" capture="environment" id="camA"></label>
+          <label class="pbtn">앨범에서<input class="hidden-input" type="file" accept="image/*" id="galA"></label>
+        </div>
+        <button class="kill" id="killA" style="display:none" type="button">지우기</button>
+      </div>
+    </div>
+    <div class="mini">바로 찍거나 이미 찍어 둔 사진을 앨범에서 불러옵니다. 조치 전 사진만 있어도 저장되며, 조치 후 사진은 나중에 목록에서 불러와 추가하세요.</div>
+  </div>
+
+  <div class="card">
+    <h2>재해유형 <em>필수</em></h2>
+    <div class="typePick">
+      <span class="dot" id="typeDot"></span>
+      <select id="typeSel"></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>언제 · 어디서</h2>
+    <div class="field">
+      <label class="f" for="when">일시</label>
+      <input type="datetime-local" id="when">
+    </div>
+    <div class="row field">
+      <div>
+        <label class="f" for="dong">동 · 구역</label>
+        <select id="dong"></select>
+      </div>
+      <div>
+        <label class="f" for="floor">층</label>
+        <select id="floor"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label class="f" for="spot">세부 위치</label>
+      <div class="chips" id="spotChips"></div>
+      <input type="text" id="spot" placeholder="예: 동측 계단실 개구부">
+    </div>
+    <div class="mini" id="locPreview">위치: 미입력</div>
+  </div>
+
+  <div class="card">
+    <h2>무엇이 위험했나</h2>
+    <div class="field">
+      <div class="chips" id="hazChips"></div>
+      <textarea id="haz" placeholder="발견한 위험 요인을 적으세요"></textarea>
+    </div>
+    <div class="field">
+      <label class="f">위험 등급</label>
+      <div class="seg" id="gradeSeg">
+        <button type="button" data-g="긴급">긴급</button>
+        <button type="button" data-g="주의" class="on">주의</button>
+        <button type="button" data-g="일반">일반</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>어떻게 조치했나</h2>
+    <div class="field">
+      <div class="chips" id="actChips"></div>
+      <textarea id="act" placeholder="실시한 조치 내용을 적으세요"></textarea>
+    </div>
+    <div class="row field">
+      <div>
+        <label class="f" for="team">담당 팀·공종</label>
+        <select id="team"></select>
+        <input type="text" id="teamEtc" placeholder="공종 직접 입력" style="display:none;margin-top:8px">
+      </div>
+      <div>
+        <label class="f" for="actor">조치자</label>
+        <input type="text" id="actor" placeholder="조치자 이름 입력">
+      </div>
+    </div>
+    <div class="field">
+      <label class="f" for="checker">확인 · 안전관리자</label>
+      <input type="text" id="checker">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary full wide" id="btnSave">저장하고 보고서 만들기</button>
+    <button class="btn" id="btnPreview">보고서 미리보기</button>
+    <button class="btn line-danger" id="btnReset">입력 지우기</button>
+  </div>
+  <div class="mini" id="editNote" style="display:none"></div>
+</section>
+
+<!-- ══════════ 목록 ══════════ -->
+<section class="panel" id="p-list">
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <input type="month" id="fMonth">
+      <button class="btn sm" id="fAll" style="flex:0 0 84px">전체 보기</button>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <select id="fType"></select>
+    </div>
+    <input type="text" id="fText" placeholder="위치 · 위험내용 · 조치내용 검색">
+  </div>
+  <div class="stat">
+    <div><b id="stTotal">0</b><span>표시 건수</span></div>
+    <div><b id="stUrgent">0</b><span>긴급</span></div>
+    <div><b id="stDone">0</b><span>조치 후 사진</span></div>
+  </div>
+  <div class="tally" id="tally" style="display:none"><h3>재해유형별 발생 건수</h3><div id="tallyRows"></div></div>
+  <div id="listWrap"></div>
+</section>
+
+<!-- ══════════ 사진대지 ══════════ -->
+<section class="panel" id="p-print">
+  <div class="card">
+    <h2>안전관리 사진대지 인쇄</h2>
+    <div class="field">
+      <label class="f" for="pMonth">대상 월</label>
+      <input type="month" id="pMonth">
+    </div>
+    <div class="field">
+      <label class="f" for="pPer">한 페이지 건수</label>
+      <select id="pPer">
+        <option value="2">2건 (권장)</option>
+        <option value="3">3건</option>
+        <option value="1">1건 (크게)</option>
+      </select>
+    </div>
+    <button class="btn primary wide" id="btnPrint">사진대지 인쇄 · PDF 저장</button>
+    <div class="mini">인쇄 대화상자에서 용지 A4 세로, 배율 100%, ‘배경 그래픽’을 켜면 표 음영까지 인쇄됩니다.</div>
+  </div>
+  <div class="card">
+    <h2>데이터 내보내기</h2>
+    <div class="actions">
+      <button class="btn" id="btnCsv">엑셀용 CSV</button>
+      <button class="btn" id="btnBackup">전체 백업 파일</button>
+      <button class="btn full" id="btnRestore">백업 파일 불러오기</button>
+    </div>
+    <input type="file" id="restoreFile" accept="application/json" style="display:none">
+    <div class="mini">CSV에는 글자 정보만 담깁니다. 사진까지 옮기려면 백업 파일을 쓰세요.</div>
+  </div>
+</section>
+
+<!-- ══════════ 설정 ══════════ -->
+<section class="panel" id="p-set">
+  <div class="card">
+    <h2>현장 정보</h2>
+    <div class="field">
+      <label class="f" for="sSite">현장명</label>
+      <input type="text" id="sSite" placeholder="현장명 입력">
+    </div>
+    <div class="field">
+      <label class="f" for="sOrg">시공사 · 소속</label>
+      <input type="text" id="sOrg" placeholder="시공사·소속 입력">
+    </div>
+    <div class="field">
+      <label class="f" for="sChecker">기본 확인자</label>
+      <input type="text" id="sChecker" placeholder="확인자 이름 입력">
+    </div>
+    <button class="btn line-danger wide" id="btnClearSite">현장명 · 소속 · 확인자 초기화</button>
+    <div class="mini">현장명, 소속, 기본 확인자를 비웁니다. 다른 현장에 넘기거나 새로 시작할 때 쓰세요. 저장된 기록은 그대로 남습니다.</div>
+  </div>
+  <div class="card">
+    <h2>선택 목록 다듬기</h2>
+    <div class="field">
+      <label class="f" for="sType">재해유형 (줄바꿈으로 구분)</label>
+      <textarea id="sType" rows="7"></textarea>
+    </div>
+    <div class="field">
+      <label class="f" for="sDong">동 · 구역</label>
+      <textarea id="sDong" rows="5"></textarea>
+    </div>
+    <div class="field">
+      <label class="f" for="sFloor">층</label>
+      <textarea id="sFloor" rows="6"></textarea>
+    </div>
+    <div class="field">
+      <label class="f" for="sSpot">세부 위치</label>
+      <textarea id="sSpot" rows="6"></textarea>
+    </div>
+    <div class="field">
+      <label class="f" for="sHaz">위험 요인</label>
+      <textarea id="sHaz" rows="8"></textarea>
+    </div>
+    <div class="field">
+      <label class="f" for="sAct">조치 내용</label>
+      <textarea id="sAct" rows="8"></textarea>
+    </div>
+    <div class="field">
+      <label class="f" for="sTeam">담당 팀·공종</label>
+      <textarea id="sTeam" rows="5"></textarea>
+    </div>
+    <button class="btn primary wide" id="btnSaveSet">설정 저장</button>
+    <div class="mini">재해유형은 적은 순서대로 드롭다운에 나옵니다. 자주 쓰는 유형을 위쪽에 두세요.</div>
+  </div>
+  <div class="card">
+    <h2>암호 · 사용기간</h2>
+    <div class="aState" id="aState">불러오는 중</div>
+    <hr class="sep">
+    <div class="field">
+      <label class="f" for="aAdmin">암호 확인</label>
+      <div class="pwrow">
+        <input type="password" id="aAdmin" name="pl365-admin-check" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="암호를 정해두셨다면 입력">
+        <button type="button" class="btn sm" id="aEye">보기</button>
+      </div>
+      <div class="mini" style="margin-top:5px">브라우저가 다른 암호를 자동으로 채워 넣었을 수 있습니다. <b>보기</b>를 눌러 확인하세요.</div>
+    </div>
+    <div class="row field">
+      <div>
+        <label class="f" for="aMonths">사용기간</label>
+        <select id="aMonths">
+          <option value="1">1개월</option>
+          <option value="2">2개월</option>
+          <option value="3">3개월</option>
+          <option value="4">4개월</option>
+          <option value="5">5개월</option>
+          <option value="6">6개월</option>
+          <option value="7">7개월</option>
+          <option value="8">8개월</option>
+          <option value="9">9개월</option>
+          <option value="10">10개월</option>
+          <option value="11">11개월</option>
+          <option value="12">12개월</option>
+          <option value="0">기간 제한 없음</option>
+        </select>
+      </div>
+      <div>
+        <label class="f" for="aNewAdmin">암호 변경</label>
+        <input type="text" id="aNewAdmin" autocomplete="off" placeholder="바꿀 때만">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary full" id="aApply">암호 · 기간 적용</button>
+      <button class="btn" id="aExtend">오늘부터 연장</button>
+      <button class="btn line-danger" id="aReset">암호 초기화</button>
+    </div>
+    <div class="mini">사용기간이 끝나면 잠금화면에서 연장코드를 넣어야 다시 열립니다. 저장된 기록은 지워지지 않습니다.</div>
+    <div style="text-align:center"><button class="glink" id="aForgot">암호를 잊으셨나요?</button></div>
+    <hr class="sep">
+    <h2 style="margin-top:0">연장코드로 기간 늘리기</h2>
+    <div class="extbox" style="margin:0">
+      <div class="extlab">기간 연장 요청번호</div>
+      <div class="extno copy" id="aChal" title="눌러서 복사">------</div>
+      <div class="extrow">
+        <select id="aMonthsReq"></select>
+        <button type="button" class="btn sm primary" id="aSend">연장 요청</button>
+      </div>
+      <div class="pwrow" style="margin-top:9px">
+        <input type="text" id="aCode" inputmode="numeric" maxlength="6" placeholder="받은 코드 6자리를 넣으면 바로 연장">
+      </div>
+      <div class="extalt"><button type="button" class="extlink" id="aSendSms">문자</button><button type="button" class="extlink" id="aSendMail">메일</button></div>
+    </div>
+    <div class="mini">연장 요청을 누르면 요청번호가 담긴 문자가 자동으로 만들어집니다. 코드는 한 번 쓰면 다시 못 씁니다.</div>
+  </div>
+  <div class="card">
+    <h2>저장 공간</h2>
+    <div class="mini" id="usage">계산 중</div>
+    <hr class="sep">
+    <button class="btn line-danger wide" id="btnWipe">모든 기록 삭제</button>
+  </div>
+</section>
+
+<footer class="appfoot">
+  사진 한 장 안전관리 일지 v8 · 프로그램 문의 · 개선 요청<br>
+  <a id="mailLink" href="mailto:cys9228@naver.com">✉ cys9228@naver.com</a>
+</footer>
+
+</main>
+
+<div id="saveBar"><button class="btn primary" id="btnSaveSet2">설정 저장</button></div>
+
+<nav class="tabbar">
+  <button data-t="write" class="on"><span class="ic">✏️</span>작성</button>
+  <button data-t="list"><span class="ic">🗂️</span>목록</button>
+  <button data-t="print"><span class="ic">🖨️</span>사진대지</button>
+  <button data-t="set"><span class="ic">⚙️</span>설정</button>
+</nav>
+
+<div id="modal">
+  <div class="wrap"><img id="modalImg" alt="안전조치 기록 보고서"></div>
+  <div class="bar">
+    <button class="btn dark" id="mDown">이미지 저장</button>
+    <button class="btn dark" id="mClose">닫기</button>
+  </div>
+</div>
+
+<div id="gate">
+  <div class="gcard">
+    <div class="gmark"></div>
+
+    <div id="gLogin">
+      <h2 id="gTitle">암호를 입력하세요</h2>
+      <p class="gdesc" id="gDesc">현장 안전관리 일지입니다.</p>
+      <div class="gwarn" id="gWarn" style="display:none"></div>
+      <input type="password" id="gPw" name="pl365-entry" inputmode="numeric" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="암호">
+      <label class="gkeep"><input type="checkbox" id="gKeep" checked>이 기기에서 다음부터 묻지 않기</label>
+      <button class="btn primary wide" id="gEnter">들어가기</button>
+      <div class="gmsg" id="gMsg"></div>
+
+      <div class="extbox">
+        <div class="extlab">기간 연장 요청번호</div>
+        <div class="extno copy" id="gChal" title="눌러서 복사">------</div>
+        <div class="extrow">
+          <select id="gMonths"></select>
+          <button type="button" class="btn sm primary" id="gSend">연장 요청</button>
+        </div>
+        <div class="pwrow" style="margin-top:9px">
+          <input type="text" id="gCode" inputmode="numeric" maxlength="6" placeholder="받은 코드 6자리를 넣으면 바로 연장">
+        </div>
+        <div class="gmsg" id="gCodeMsg" style="min-height:0"></div>
+        <div class="extalt"><button type="button" class="extlink" id="gSendSms">문자</button><button type="button" class="extlink" id="gSendMail">메일</button></div>
+      </div>
+
+      <div class="gfoot">문의 <a href="mailto:cys9228@naver.com">cys9228@naver.com</a></div>
+    </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="sheet"></div>
+
+<script>
+'use strict';
+
+/* ═══════════ 기본값 ═══════════ */
+const DEF = {
+  site:'', org:'', checker:'',
+  type:['추락','낙하·비래','협착·끼임','전도·넘어짐','붕괴·도괴','감전','화재·폭발','질식·중독','충돌·부딪힘','절단·베임','이상온도','기타'],
+  dong:['해당없음','A동','B동','C동','D동','지하주차장','가설사무실','자재적치장','현장 출입구','옥외작업장'],
+  floor:['해당없음','지하2층','지하1층','1층','2층','3층','4층','5층','6층','7층','8층','9층','10층','옥상'],
+  spot:['계단실','엘리베이터 홀','발코니','개구부 주변','가설통로','슬래브 단부','양중구역','타워크레인 하부','분전반 주변','자재 적치구역','세대 내부','외부 비계'],
+  haz:['작업통로 자재 적치','안전난간 미설치','개구부 덮개 미흡','안전대 미착용','보호구 미착용','전선 피복 손상','분전반 시건 미흡','소화기 미비치','정리정돈 불량','사다리 불안정','인양물 하부 출입','화기작업 불티방지 미흡','추락 방호망 손상','밀폐공간 환기 미흡'],
+  act:['자재 정리 및 통로 확보','안전난간 설치 완료','개구부 덮개 고정 및 표기','안전대 착용 지도','보호구 지급 및 착용 지도','손상 전선 교체','분전반 시건장치 설치','소화기 비치','정리정돈 실시','사용 금지 조치 후 교체','작업 중지 후 안전조치 뒤 재개','출입통제선 설치'],
+  team:['골조','형틀','철근','전기','설비','미장','방수','조적','도장','토목','가설','신호수','원청 직영']
+};
+const TCOLOR = {'추락':'#C7362B','낙하':'#E8590C','협착':'#7048E8','전도':'#1098AD','붕괴':'#8B5E34',
+  '감전':'#F2B705','화재':'#E03131','질식':'#2F9E44','충돌':'#364FC7','절단':'#0B7285','이상':'#F76707','기타':'#868E96'};
+function tcolor(t){ return TCOLOR[String(t||'').slice(0,2)] || '#868E96'; }
+
+const SKEY = 'photolog365.settings';
+let SET = load();
+function load(){
+  try{ return Object.assign({}, DEF, JSON.parse(localStorage.getItem(SKEY)||'{}')); }
+  catch(e){ return Object.assign({}, DEF); }
+}
+function saveSet(){ localStorage.setItem(SKEY, JSON.stringify(SET)); }
+
+/* ═══════════ IndexedDB ═══════════ */
+const DBN='photolog365', STORE='records';
+let _db=null;
+function db(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DBN,1);
+    r.onupgradeneeded=e=>{ const d=e.target.result; if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id'}); };
+    r.onsuccess=e=>{ _db=e.target.result; res(_db); };
+    r.onerror=()=>rej(r.error);
+  });
+}
+function tx(mode){ return db().then(d=>d.transaction(STORE,mode).objectStore(STORE)); }
+function put(rec){ return tx('readwrite').then(s=>new Promise((res,rej)=>{const q=s.put(rec);q.onsuccess=()=>res(rec);q.onerror=()=>rej(q.error);})); }
+function del(id){ return tx('readwrite').then(s=>new Promise((res,rej)=>{const q=s.delete(id);q.onsuccess=res;q.onerror=()=>rej(q.error);})); }
+function all(){ return tx('readonly').then(s=>new Promise((res,rej)=>{const q=s.getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error);})); }
+function wipe(){ return tx('readwrite').then(s=>new Promise((res,rej)=>{const q=s.clear();q.onsuccess=res;q.onerror=()=>rej(q.error);})); }
+
+/* ═══════════ 도우미 ═══════════ */
+const $ = s=>document.querySelector(s);
+const $$ = s=>Array.from(document.querySelectorAll(s));
+let toastT=null;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2200); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function localInput(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes()); }
+function fmtDate(iso){ const d=new Date(iso); return d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate()); }
+function fmtTime(iso){ const d=new Date(iso); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function monthKey(iso){ const d=new Date(iso); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
+function safeName(s){ return String(s||'').replace(/[\\/:*?"<>|\s]/g,'_').slice(0,40); }
+function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const lines = v => v.split('\n').map(s=>s.trim()).filter(Boolean);
+function scrollTo_(el,opt){ try{ el && el.scrollIntoView(opt); }catch(e){} }
+
+/* ═══════════ 사진 압축 ═══════════ */
+function readAsDataURL(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(new Error('파일 읽기 실패'));
+    r.readAsDataURL(file);
+  });
+}
+function shrink(src, max, q){
+  const w0=src.width||src.naturalWidth, h0=src.height||src.naturalHeight;
+  if(!w0 || !h0) throw new Error('크기 확인 실패');
+  const sc=Math.min(1, max/Math.max(w0,h0));
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(w0*sc)); c.height=Math.max(1,Math.round(h0*sc));
+  c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg', q);
+}
+async function toDataURL(file, max=1400, q=0.82){
+  // 1순위: createImageBitmap (회전정보 자동 반영, 메모리 적게 씀)
+  try{
+    const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
+    const out=shrink(bmp,max,q);
+    if(bmp.close) bmp.close();
+    return out;
+  }catch(e){}
+  // 2순위: FileReader → 이미지 → 축소
+  try{
+    const raw=await readAsDataURL(file);
+    const img=await loadImg(raw);
+    return shrink(img,max,q);
+  }catch(e){}
+  // 3순위: 원본 그대로 저장 (용량은 크지만 기록은 남음)
+  const raw=await readAsDataURL(file);
+  if(raw && raw.length < 8000000) return raw;
+  throw new Error('이 사진 형식은 넣을 수 없습니다');
+}
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+
+/* ═══════════ 보고서 이미지 ═══════════ */
+function wrapText(ctx, text, maxW){
+  const out=[];
+  String(text||'').split('\n').forEach(par=>{
+    if(!par){ out.push(''); return; }
+    let line='';
+    for(const ch of par){
+      if(ctx.measureText(line+ch).width > maxW && line){ out.push(line); line=ch; }
+      else line+=ch;
+    }
+    out.push(line);
+  });
+  return out;
+}
+async function buildReport(rec){
+  const W=1080, PAD=44, F="'Pretendard','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif";
+  const imgB = rec.before ? await loadImg(rec.before) : null;
+  const imgA = rec.after  ? await loadImg(rec.after)  : null;
+  const two = imgB && imgA;
+
+  const rows = [
+    ['일자 · 시각', fmtDate(rec.ts)+'  '+fmtTime(rec.ts)],
+    ['위치', rec.loc || '-'],
+    ['위험 요인', rec.haz || '-'],
+    ['조치 내용', rec.act || '-'],
+    ['담당 팀', rec.team || '-'],
+    ['조치자 · 확인', (rec.actor||'-')+'  /  '+(rec.checker||'-')]
+  ];
+
+  const c=document.createElement('canvas'); c.width=W;
+  let ctx=c.getContext('2d');
+  const VAL_X=PAD+200, VAL_W=W-PAD-VAL_X-24;
+  ctx.font='500 30px '+F;
+  const rowH = rows.map(r=>{
+    const ls = wrapText(ctx, r[1], VAL_W);
+    return {label:r[0], lines:ls, h:Math.max(74, ls.length*42+32)};
+  });
+
+  const HEAD=140, TYPEBAR=78, TAGH=46, PH=two?360:700, FOOT=28;
+  const bodyTop = HEAD+TYPEBAR+22;
+  const photosH = (imgB||imgA) ? (TAGH+PH+28) : 0;
+  const tableH = rowH.reduce((a,r)=>a+r.h,0);
+  const H = bodyTop + photosH + tableH + 26 + FOOT;
+
+  c.height=H; ctx=c.getContext('2d'); ctx.textBaseline='top';
+  ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,W,H);
+
+  // 머리말
+  ctx.fillStyle='#12734F'; ctx.fillRect(0,0,W,HEAD);
+  ctx.fillStyle='#FFFFFF';
+  ctx.fillRect(PAD+16,34,14,50); ctx.fillRect(PAD,52,50,14);
+  ctx.font='800 42px '+F;
+  ctx.fillText('현장 안전조치 기록', PAD+76, 33);
+  ctx.font='500 24px '+F; ctx.globalAlpha=.85;
+  ctx.fillText([rec.site||SET.site, rec.org||SET.org].filter(Boolean).join('  ·  ') || '현장 안전관리', PAD+76, 86);
+  ctx.globalAlpha=1;
+  const g=rec.grade||'주의';
+  const gc = g==='긴급' ? '#C7362B' : (g==='주의' ? '#E8A317' : '#0D5A3D');
+  ctx.font='800 26px '+F;
+  const gw=ctx.measureText(g).width+44;
+  ctx.fillStyle=gc; ctx.beginPath(); ctx.roundRect(W-PAD-gw,50,gw,46,23); ctx.fill();
+  ctx.fillStyle = g==='주의' ? '#3A2A00' : '#FFFFFF';
+  ctx.fillText(g, W-PAD-gw+22, 59);
+
+  // 재해유형 띠
+  const tc = tcolor(rec.type);
+  ctx.fillStyle='#F1F3F5'; ctx.fillRect(0,HEAD,W,TYPEBAR);
+  ctx.fillStyle=tc; ctx.fillRect(0,HEAD,12,TYPEBAR);
+  ctx.fillStyle='#5B6773'; ctx.font='700 25px '+F;
+  ctx.fillText('재해유형', PAD, HEAD+26);
+  ctx.font='800 34px '+F; ctx.fillStyle=tc;
+  ctx.fillText(rec.type || '미지정', PAD+150, HEAD+20);
+
+  // 사진
+  let y=bodyTop;
+  const drawShot=(img,x,w,h,label,color,textColor)=>{
+    ctx.font='700 24px '+F;
+    const tw=ctx.measureText(label).width+36;
+    ctx.fillStyle=color; ctx.beginPath(); ctx.roundRect(x,y,tw,TAGH-8,[10,10,0,0]); ctx.fill();
+    ctx.fillStyle=textColor; ctx.fillText(label, x+18, y+7);
+    const iy=y+TAGH-8;
+    ctx.save(); ctx.beginPath(); ctx.rect(x,iy,w,h); ctx.clip();
+    const s=Math.max(w/img.width,h/img.height), dw=img.width*s, dh=img.height*s;
+    ctx.drawImage(img, x+(w-dw)/2, iy+(h-dh)/2, dw, dh);
+    ctx.restore();
+    ctx.strokeStyle=color; ctx.lineWidth=3; ctx.strokeRect(x+1.5,iy+1.5,w-3,h-3);
+  };
+  if(two){
+    const bw=(W-PAD*2-20)/2;
+    drawShot(imgB, PAD, bw, PH, '조치 전', '#E8A317', '#3A2A00');
+    drawShot(imgA, PAD+bw+20, bw, PH, '조치 후', '#12734F', '#FFFFFF');
+    y += TAGH+PH+28;
+  } else if(imgB||imgA){
+    const one=imgB||imgA;
+    drawShot(one, PAD, W-PAD*2, PH, imgB?'조치 전':'조치 후', imgB?'#E8A317':'#12734F', imgB?'#3A2A00':'#FFFFFF');
+    y += TAGH+PH+28;
+  }
+
+  // 표
+  rowH.forEach(r=>{
+    ctx.fillStyle='#F1F3F5'; ctx.fillRect(PAD,y,176,r.h);
+    ctx.strokeStyle='#D7DDE3'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(PAD,y+.5); ctx.lineTo(W-PAD,y+.5); ctx.stroke();
+    ctx.fillStyle='#5B6773'; ctx.font='700 27px '+F;
+    ctx.fillText(r.label, PAD+18, y+(r.h-32)/2);
+    ctx.fillStyle='#16202B'; ctx.font='500 30px '+F;
+    let ty=y+(r.h-r.lines.length*42)/2+4;
+    r.lines.forEach(l=>{ ctx.fillText(l, VAL_X, ty); ty+=42; });
+    y+=r.h;
+  });
+  ctx.strokeStyle='#D7DDE3'; ctx.beginPath(); ctx.moveTo(PAD,y+.5); ctx.lineTo(W-PAD,y+.5); ctx.stroke();
+  return c;
+}
+
+let curBlob=null, curName='안전조치기록.jpg', curRecId=null;
+async function showReport(rec, preview){
+  toast('보고서를 만드는 중');
+  const c=await buildReport(rec);
+  $('#modalImg').src = c.toDataURL('image/jpeg',0.9);
+  curName='안전조치기록_'+fmtDate(rec.ts).replace(/\./g,'')+'_'+safeName(rec.type)+'_'+safeName(rec.loc)+'.jpg';
+  curBlob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));
+  curRecId = preview ? null : (rec.id||null);
+  $('#modal').classList.add('on');
+}
+$('#mClose').onclick=()=>$('#modal').classList.remove('on');
+$('#mDown').onclick=()=>{
+  if(!curBlob) return;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(curBlob); a.download=curName; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000); toast('저장했습니다');
+};
+
+/* ═══════════ 작성 ═══════════ */
+const form = { before:null, after:null, grade:'주의', type:'', editId:null };
+
+function slot(which){
+  const up = which==='before'?'B':'A';
+  const nm = which==='before'?'조치 전':'조치 후';
+  ['#cam'+up,'#gal'+up].forEach(sel=>{
+    $(sel).addEventListener('change', async e=>{
+      const f=e.target.files && e.target.files[0];
+      e.target.value='';
+      if(!f) return;
+      $('#box'+up).innerHTML='<span class="cam">⏳</span>불러오는 중';
+      try{
+        form[which]=await toDataURL(f);
+        paintSlot(which);
+        if(which==='before' && !$('#when').value) $('#when').value=localInput(new Date());
+        toast(nm+' 사진이 들어갔습니다');
+      }catch(err){
+        paintSlot(which);
+        toast('사진 넣기 실패 — '+(err.message||'다시 시도해 주세요'));
+      }
+    });
+  });
+  $('#kill'+up).addEventListener('click', ev=>{ ev.stopPropagation(); ev.preventDefault(); form[which]=null; paintSlot(which); });
+}
+function paintSlot(which){
+  const up=which==='before'?'B':'A', box=$('#box'+up), sl=$('#slot'+up), kill=$('#kill'+up);
+  if(form[which]){
+    box.innerHTML=''; const i=new Image(); i.src=form[which]; box.appendChild(i);
+    sl.classList.add('filled'); kill.style.display='block';
+  } else {
+    box.innerHTML='<span class="cam">📷</span>사진 없음';
+    sl.classList.remove('filled'); kill.style.display='none';
+  }
+}
+slot('before'); slot('after');
+
+/* 재해유형 드롭다운 */
+function renderTypes(){
+  const s=$('#typeSel');
+  let opts = SET.type.slice();
+  if(form.type && !opts.includes(form.type)) opts.push(form.type);
+  s.innerHTML='<option value="">재해유형 선택</option>'+opts.map(t=>`<option>${esc(t)}</option>`).join('');
+  s.value=form.type||'';
+  $('#typeDot').style.background = form.type ? tcolor(form.type) : '#DEE2E6';
+}
+$('#typeSel').addEventListener('change', ()=>{ form.type=$('#typeSel').value; renderTypes(); });
+
+/* 위치 */
+function fillLocSelects(keepD, keepF){
+  const d=$('#dong'), f=$('#floor');
+  const cd = keepD!==undefined?keepD:d.value, cf = keepF!==undefined?keepF:f.value;
+  d.innerHTML='<option value="">동·구역 선택</option>'+SET.dong.map(v=>`<option>${esc(v)}</option>`).join('');
+  f.innerHTML='<option value="">층 선택</option>'+SET.floor.map(v=>`<option>${esc(v)}</option>`).join('');
+  d.value=cd||''; f.value=cf||'';
+}
+function locString(){
+  const parts=[$('#dong').value, $('#floor').value, $('#spot').value.trim()]
+    .filter(v=>v && v!=='해당없음');
+  return parts.join(' ');
+}
+function paintLoc(){ $('#locPreview').textContent = '위치: ' + (locString() || '미입력'); }
+
+/* 칩 */
+function chips(host, list, target, cls){
+  const el=$(host); el.innerHTML='';
+  list.forEach(v=>{
+    const b=document.createElement('button');
+    b.type='button'; b.className='chip'+(cls?' '+cls:''); b.textContent=v;
+    b.onclick=()=>{
+      const t=$(target), cur=t.value.trim(), parts=cur?cur.split(' / ').map(s=>s.trim()):[];
+      if(parts.includes(v)) t.value=parts.filter(x=>x!==v).join(' / ');
+      else t.value = parts.concat([v]).join(' / ');
+      syncChips(host,target); if(target==='#spot') paintLoc();
+    };
+    el.appendChild(b);
+  });
+  $(target).addEventListener('input', ()=>syncChips(host,target));
+  syncChips(host,target);
+}
+function syncChips(host,target){
+  const parts=$(target).value.split(' / ').map(s=>s.trim());
+  $$(host+' .chip').forEach(b=>b.classList.toggle('sel', parts.includes(b.textContent)));
+}
+
+/* 공종 */
+function fillSelect(keep){
+  const cur = keep!==undefined?keep:$('#team').value;
+  $('#team').innerHTML='<option value="">선택</option>'
+    + SET.team.map(t=>`<option>${esc(t)}</option>`).join('')
+    + '<option value="__etc">직접 입력…</option>';
+  $('#team').value=cur||''; toggleTeamEtc();
+}
+function toggleTeamEtc(){
+  const etc=$('#team').value==='__etc';
+  $('#teamEtc').style.display=etc?'block':'none';
+  if(etc) setTimeout(()=>$('#teamEtc').focus(),30);
+}
+function teamValue(){ return $('#team').value==='__etc' ? $('#teamEtc').value.trim() : $('#team').value; }
+$('#team').addEventListener('change', toggleTeamEtc);
+
+function renderOptions(){
+  renderTypes();
+  fillLocSelects();
+  chips('#spotChips', SET.spot, '#spot');
+  chips('#hazChips', SET.haz, '#haz', 'warn');
+  chips('#actChips', SET.act, '#act');
+  fillSelect();
+  fillTypeFilter();
+  paintSiteLabel();
+}
+function paintSiteLabel(){
+  const name=[SET.site, SET.org].filter(Boolean).join(' · ');
+  const el=$('#siteLabel');
+  el.textContent = name || '현장명 미설정 — 눌러서 설정';
+  el.classList.toggle('unset', !name);
+  $('#setupBar').style.display = SET.site ? 'none' : 'block';
+  if(!SET.site) $('#quickSite').value='';
+  const subj = '[사진 한 장 안전관리 일지] 문의' + (SET.site ? ' - '+SET.site : '');
+  $('#mailLink').href = 'mailto:cys9228@naver.com?subject='+encodeURIComponent(subj);
+}
+$('#siteLabel').onclick=()=>{
+  go('set');
+  setTimeout(()=>{ scrollTo_($('#sSite'),{block:'center'}); $('#sSite').focus(); },60);
+};
+$('#quickSave').onclick=()=>{
+  const v=$('#quickSite').value.trim();
+  if(!v){ toast('현장명을 입력해 주세요'); $('#quickSite').focus(); return; }
+  SET.site=v; saveSet(); paintSiteLabel(); fillSet();
+  toast('현장명을 저장했습니다');
+};
+$('#quickSite').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#quickSave').click(); });
+$('#dong').addEventListener('change', paintLoc);
+$('#floor').addEventListener('change', paintLoc);
+$('#spot').addEventListener('input', paintLoc);
+
+$('#gradeSeg').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  $$('#gradeSeg button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); form.grade=b.dataset.g;
+});
+
+function readForm(){
+  return {
+    id: form.editId || ('r'+Date.now()+Math.random().toString(36).slice(2,6)),
+    ts: new Date($('#when').value || Date.now()).toISOString(),
+    created: new Date().toISOString(),
+    site: SET.site, org: SET.org,
+    type: form.type,
+    dong: $('#dong').value, floor: $('#floor').value, spot: $('#spot').value.trim(),
+    loc: locString(),
+    haz: $('#haz').value.trim(),
+    act: $('#act').value.trim(),
+    grade: form.grade,
+    team: teamValue(),
+    actor: $('#actor').value.trim(),
+    checker: $('#checker').value.trim(),
+    before: form.before, after: form.after
+  };
+}
+function resetForm(){
+  form.before=null; form.after=null; form.editId=null; form.grade='주의'; form.type='';
+  paintSlot('before'); paintSlot('after'); renderTypes();
+  $('#when').value=localInput(new Date());
+  ['#spot','#haz','#act','#actor'].forEach(s=>$(s).value='');
+  $('#dong').value=''; $('#floor').value='';
+  $('#team').value=''; $('#teamEtc').value=''; toggleTeamEtc();
+  $('#checker').value=SET.checker||'';
+  $$('#gradeSeg button').forEach(x=>x.classList.toggle('on', x.dataset.g==='주의'));
+  syncChips('#spotChips','#spot'); syncChips('#hazChips','#haz'); syncChips('#actChips','#act');
+  paintLoc();
+  $('#editNote').style.display='none';
+}
+$('#btnReset').onclick=()=>{ resetForm(); toast('입력을 지웠습니다'); };
+
+$('#btnPreview').onclick=async()=>{
+  const r=readForm();
+  if(!r.before && !r.after){ toast('사진을 먼저 넣어 주세요'); return; }
+  await showReport(r, true);
+};
+$('#btnSave').onclick=async()=>{
+  const r=readForm();
+  if(!r.before && !r.after){ toast('사진을 먼저 넣어 주세요'); return; }
+  if(!r.type){ toast('재해유형을 선택해 주세요'); scrollTo_($('#typeSel'),{behavior:'smooth',block:'center'}); $('#typeSel').focus(); return; }
+  if(!r.haz){ toast('위험 내용을 적어 주세요'); $('#haz').focus(); return; }
+  await put(r);
+  SET.checker=r.checker;
+  let added=false;
+  if(r.team && !SET.team.includes(r.team)){ SET.team.push(r.team); added=true; }
+  saveSet();
+  if(added) fillSelect('');
+  await showReport(r);
+  resetForm(); refreshList();
+  toast('저장했습니다');
+};
+
+/* ═══════════ 목록 ═══════════ */
+let cache=[];
+function fillTypeFilter(){
+  const cur=$('#fType').value;
+  $('#fType').innerHTML='<option value="">재해유형 전체</option>'+SET.type.map(t=>`<option>${esc(t)}</option>`).join('');
+  $('#fType').value=cur||'';
+}
+async function refreshList(){
+  cache=(await all()).sort((a,b)=>b.ts.localeCompare(a.ts));
+  drawList(); usage();
+}
+function filtered(){
+  const m=$('#fMonth').value, q=$('#fText').value.trim().toLowerCase(), ty=$('#fType').value;
+  return cache.filter(r=>{
+    if(m && monthKey(r.ts)!==m) return false;
+    if(ty && r.type!==ty) return false;
+    if(q){
+      const hay=[r.type,r.loc,r.haz,r.act,r.team,r.actor,r.checker].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function drawList(){
+  const rows=filtered(), w=$('#listWrap');
+  $('#stTotal').textContent=rows.length;
+  $('#stUrgent').textContent=rows.filter(r=>r.grade==='긴급').length;
+  $('#stDone').textContent=rows.filter(r=>r.after).length;
+  drawTally(rows);
+  if(!rows.length){ w.innerHTML='<div class="empty">해당 조건의 기록이 없습니다.<br>작성 탭에서 사진을 찍어 기록을 남겨 보세요.</div>'; return; }
+  w.innerHTML='';
+  rows.forEach(r=>{
+    const el=document.createElement('div'); el.className='rec';
+    const thumbs=[r.before,r.after].filter(Boolean).map(s=>`<img src="${s}" alt="">`).join('');
+    const tb = r.type ? `<span class="tbadge" style="background:${tcolor(r.type)}">${esc(r.type)}</span>` : '';
+    el.innerHTML=`
+      <div class="head">
+        <div class="thumbs">${thumbs}</div>
+        <div class="meta">
+          <div class="when">${fmtDate(r.ts)} ${fmtTime(r.ts)} · ${esc(r.loc)||'위치 미기재'}</div>
+          <div class="haz">${tb}${esc(r.haz)}</div>
+          <div class="act">→ ${esc(r.act||'조치 내용 없음')}</div>
+        </div>
+        <span class="badge ${r.grade||'주의'}">${r.grade||'주의'}</span>
+      </div>
+      <div class="foot">
+        <button class="btn sm" data-a="report">보고서</button>
+        <button class="btn sm" data-a="edit">불러와 수정</button>
+        <button class="btn sm line-danger" data-a="del">삭제</button>
+      </div>`;
+    el.querySelector('[data-a=report]').onclick=()=>showReport(r);
+    el.querySelector('[data-a=edit]').onclick=()=>loadToForm(r);
+    el.querySelector('[data-a=del]').onclick=async()=>{
+      if(!confirm('이 기록을 삭제할까요? 되돌릴 수 없습니다.')) return;
+      await del(r.id); refreshList(); toast('삭제했습니다');
+    };
+    w.appendChild(el);
+  });
+}
+function drawTally(rows){
+  const box=$('#tally'), host=$('#tallyRows');
+  const counts={};
+  rows.forEach(r=>{ if(r.type) counts[r.type]=(counts[r.type]||0)+1; });
+  const ent=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if(!ent.length){ box.style.display='none'; return; }
+  box.style.display='block';
+  const max=ent[0][1];
+  host.innerHTML=ent.map(([t,n])=>`<div class="t"><span class="nm">${esc(t)}</span><span class="bar"><i style="width:${Math.round(n/max*100)}%;background:${tcolor(t)}"></i></span><span class="n">${n}</span></div>`).join('');
+}
+function loadToForm(r){
+  form.editId=r.id; form.before=r.before||null; form.after=r.after||null;
+  form.grade=r.grade||'주의'; form.type=r.type||'';
+  paintSlot('before'); paintSlot('after'); renderTypes();
+  $('#when').value=localInput(new Date(r.ts));
+  if(r.dong!==undefined || r.floor!==undefined){
+    if(r.dong && !SET.dong.includes(r.dong)) SET.dong.push(r.dong);
+    if(r.floor && !SET.floor.includes(r.floor)) SET.floor.push(r.floor);
+    fillLocSelects(r.dong||'', r.floor||'');
+    $('#spot').value=r.spot||'';
+  } else {
+    fillLocSelects('','');
+    $('#spot').value=r.loc||'';
+  }
+  $('#haz').value=r.haz||''; $('#act').value=r.act||'';
+  $('#actor').value=r.actor||''; $('#checker').value=r.checker||'';
+  if(r.team && !SET.team.includes(r.team)){ $('#team').value='__etc'; $('#teamEtc').value=r.team; }
+  else { $('#team').value=r.team||''; $('#teamEtc').value=''; }
+  toggleTeamEtc();
+  $$('#gradeSeg button').forEach(x=>x.classList.toggle('on', x.dataset.g===form.grade));
+  syncChips('#spotChips','#spot'); syncChips('#hazChips','#haz'); syncChips('#actChips','#act');
+  paintLoc();
+  $('#editNote').style.display='block';
+  $('#editNote').textContent=fmtDate(r.ts)+' 기록을 수정 중입니다. 저장하면 덮어씁니다.';
+  go('write'); window.scrollTo(0,0);
+}
+$('#fMonth').addEventListener('change', drawList);
+$('#fType').addEventListener('change', drawList);
+$('#fText').addEventListener('input', drawList);
+$('#fAll').onclick=()=>{ $('#fMonth').value=''; $('#fText').value=''; $('#fType').value=''; drawList(); };
+
+/* ═══════════ 사진대지 ═══════════ */
+$('#btnPrint').onclick=()=>{
+  const m=$('#pMonth').value, per=parseInt($('#pPer').value,10);
+  const rows=cache.filter(r=>!m||monthKey(r.ts)===m).sort((a,b)=>a.ts.localeCompare(b.ts));
+  if(!rows.length){ toast('해당 기간에 기록이 없습니다'); return; }
+  const title = m ? m.replace('-','년 ')+'월' : '전체 기간';
+  const sh=$('#sheet'); sh.innerHTML='';
+  for(let i=0;i<rows.length;i+=per){
+    const page=document.createElement('div'); page.className='sheetpage';
+    page.innerHTML=`<p class="sheettitle">안전관리 사진대지</p>
+      <p class="sheetsub">${esc([SET.site,SET.org].filter(Boolean).join('  ·  ')||'현장 안전관리')} &nbsp;|&nbsp; ${title} &nbsp;|&nbsp; ${Math.floor(i/per)+1} / ${Math.ceil(rows.length/per)}</p>`;
+    rows.slice(i,i+per).forEach(r=>{
+      const ph=(r.before||r.after)?`<div class="ph">
+        ${r.before?`<figure><figcaption>조치 전</figcaption><img src="${r.before}"></figure>`:''}
+        ${r.after?`<figure><figcaption>조치 후</figcaption><img src="${r.after}"></figure>`:''}
+      </div>`:'';
+      const b=document.createElement('div'); b.className='blk';
+      b.innerHTML = ph + `<table>
+        <tr><td class="k">일자</td><td>${fmtDate(r.ts)} ${fmtTime(r.ts)}</td><td class="k">위치</td><td>${esc(r.loc)}</td></tr>
+        <tr><td class="k">재해유형</td><td>${esc(r.type||'-')}</td><td class="k">위험등급</td><td>${esc(r.grade||'-')}</td></tr>
+        <tr><td class="k">위험요인</td><td colspan="3">${esc(r.haz)}</td></tr>
+        <tr><td class="k">조치내용</td><td colspan="3">${esc(r.act)}</td></tr>
+        <tr><td class="k">담당팀</td><td>${esc(r.team)}</td><td class="k">조치·확인</td><td>${esc(r.actor)} / ${esc(r.checker)}</td></tr>
+      </table>`;
+      page.appendChild(b);
+    });
+    sh.appendChild(page);
+  }
+  setTimeout(()=>window.print(),220);
+};
+
+/* ═══════════ 내보내기 ═══════════ */
+function dl(blob,name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+$('#btnCsv').onclick=()=>{
+  if(!cache.length){ toast('기록이 없습니다'); return; }
+  const head=['일자','시각','현장','재해유형','동·구역','층','세부위치','전체위치','위험요인','등급','조치내용','담당팀','조치자','확인자','조치전사진','조치후사진'];
+  const q=v=>'"'+String(v||'').replace(/"/g,'""')+'"';
+  const out=[head.map(q).join(',')];
+  cache.slice().sort((a,b)=>a.ts.localeCompare(b.ts)).forEach(r=>{
+    out.push([fmtDate(r.ts),fmtTime(r.ts),r.site,r.type,r.dong,r.floor,r.spot,r.loc,r.haz,r.grade,r.act,r.team,r.actor,r.checker,r.before?'있음':'없음',r.after?'있음':'없음'].map(q).join(','));
+  });
+  dl(new Blob(['\ufeff'+out.join('\r\n')],{type:'text/csv;charset=utf-8'}),'안전조치기록_'+new Date().toISOString().slice(0,10)+'.csv');
+  toast('CSV를 내려받았습니다');
+};
+$('#btnBackup').onclick=()=>{
+  if(!cache.length){ toast('기록이 없습니다'); return; }
+  dl(new Blob([JSON.stringify({v:2,settings:SET,records:cache})],{type:'application/json'}),'안전일지백업_'+new Date().toISOString().slice(0,10)+'.json');
+  toast('백업 파일을 내려받았습니다');
+};
+$('#btnRestore').onclick=()=>$('#restoreFile').click();
+$('#restoreFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const d=JSON.parse(await f.text());
+    if(!Array.isArray(d.records)) throw new Error('형식이 다릅니다');
+    const have=new Set(cache.map(r=>r.id));
+    let n=0;
+    for(const r of d.records){ if(!have.has(r.id)){ await put(r); n++; } }
+    if(d.settings){ SET=Object.assign({},DEF,d.settings); saveSet(); renderOptions(); fillSet(); }
+    await refreshList(); toast(n+'건을 불러왔습니다');
+  }catch(err){ toast('불러오지 못했습니다: '+err.message); }
+  e.target.value='';
+});
+
+/* ═══════════ 설정 ═══════════ */
+function fillSet(){
+  $('#sSite').value=SET.site||''; $('#sOrg').value=SET.org||''; $('#sChecker').value=SET.checker||'';
+  $('#sType').value=SET.type.join('\n'); $('#sDong').value=SET.dong.join('\n');
+  $('#sFloor').value=SET.floor.join('\n'); $('#sSpot').value=SET.spot.join('\n');
+  $('#sHaz').value=SET.haz.join('\n'); $('#sAct').value=SET.act.join('\n'); $('#sTeam').value=SET.team.join('\n');
+}
+$('#btnClearSite').onclick=()=>{
+  if(!confirm('현장명, 소속, 기본 확인자를 비웁니다.\n저장된 안전조치 기록은 그대로 남습니다.\n\n계속할까요?')) return;
+  SET.site=''; SET.org=''; SET.checker='';
+  saveSet();
+  $('#sSite').value=''; $('#sOrg').value=''; $('#sChecker').value='';
+  $('#checker').value='';
+  renderOptions();
+  toast('현장 정보를 비웠습니다');
+  go('write'); window.scrollTo(0,0);
+};
+function saveSettings(){
+  SET.site=$('#sSite').value.trim(); SET.org=$('#sOrg').value.trim(); SET.checker=$('#sChecker').value.trim();
+  SET.type=lines($('#sType').value); SET.dong=lines($('#sDong').value);
+  SET.floor=lines($('#sFloor').value); SET.spot=lines($('#sSpot').value);
+  SET.haz=lines($('#sHaz').value); SET.act=lines($('#sAct').value); SET.team=lines($('#sTeam').value);
+  if(!SET.type.length) SET.type=DEF.type.slice();
+  saveSet(); renderOptions(); paintLoc();
+  if(!$('#checker').value) $('#checker').value=SET.checker;
+  toast('저장 완료 — 동 '+SET.dong.length+'개, 유형 '+SET.type.length+'개');
+}
+$('#btnSaveSet').onclick=saveSettings;
+$('#btnSaveSet2').onclick=saveSettings;
+$('#btnWipe').onclick=async()=>{
+  if(!confirm('저장된 기록을 모두 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+  if(!confirm('정말 삭제할까요? 먼저 백업 파일을 받아 두는 것을 권합니다.')) return;
+  await wipe(); await refreshList(); toast('모두 삭제했습니다');
+};
+async function usage(){
+  let bytes=0; cache.forEach(r=>{ bytes+=(r.before||'').length+(r.after||'').length; });
+  $('#usage').textContent='기록 '+cache.length+'건, 사진 용량 약 '+(bytes/1048576*0.75).toFixed(1)+'MB. 기기 안에만 저장되며 서버로 전송되지 않습니다. 월말마다 백업 파일을 받아 두세요.';
+}
+
+/* ═══════════ 탭 ═══════════ */
+function go(t){
+  $$('.panel').forEach(p=>p.classList.toggle('on', p.id==='p-'+t));
+  $$('.tabbar button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  document.body.classList.toggle('setmode', t==='set');
+  if(t==='list') refreshList();
+  if(t==='set'){ fillSet(); paintAuth(); }
+}
+$$('.tabbar button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+
+/* ═══════════ 암호 · 사용기간 ═══════════ */
+const AKEY='photolog365.auth', UKEY='photolog365.unlock';
+
+/* 암호는 되돌릴 수 없는 해시로만 보관한다 */
+function sha256(msg){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let h=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const b=[]; const u8=new TextEncoder().encode(msg);
+  for(const c of u8) b.push(c);
+  const bitLen=b.length*8;
+  b.push(0x80);
+  while(b.length%64!==56) b.push(0);
+  for(let i=7;i>=0;i--) b.push((Math.floor(bitLen/Math.pow(2,i*8)))&0xff);
+  const rr=(x,n)=>((x>>>n)|(x<<(32-n)))>>>0;
+  for(let i=0;i<b.length;i+=64){
+    const w=new Array(64);
+    for(let j=0;j<16;j++) w[j]=((b[i+j*4]<<24)|(b[i+j*4+1]<<16)|(b[i+j*4+2]<<8)|b[i+j*4+3])>>>0;
+    for(let j=16;j<64;j++){
+      const s0=(rr(w[j-15],7)^rr(w[j-15],18)^(w[j-15]>>>3))>>>0;
+      const s1=(rr(w[j-2],17)^rr(w[j-2],19)^(w[j-2]>>>10))>>>0;
+      w[j]=(w[j-16]+s0+w[j-7]+s1)>>>0;
+    }
+    let [a,bb,c,d,e,f,g,hh]=h;
+    for(let j=0;j<64;j++){
+      const S1=(rr(e,6)^rr(e,11)^rr(e,25))>>>0;
+      const ch=((e&f)^((~e)&g))>>>0;
+      const t1=(hh+S1+ch+K[j]+w[j])>>>0;
+      const S0=(rr(a,2)^rr(a,13)^rr(a,22))>>>0;
+      const mj=((a&bb)^(a&c)^(bb&c))>>>0;
+      const t2=(S0+mj)>>>0;
+      hh=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=bb; bb=a; a=(t1+t2)>>>0;
+    }
+    h=[(h[0]+a)>>>0,(h[1]+bb)>>>0,(h[2]+c)>>>0,(h[3]+d)>>>0,(h[4]+e)>>>0,(h[5]+f)>>>0,(h[6]+g)>>>0,(h[7]+hh)>>>0];
+  }
+  return h.map(x=>('00000000'+x.toString(16)).slice(-8)).join('');
+}
+const PSALT='pl365::safetree::';
+function pwHash(v){ return sha256(PSALT+String(v)); }
+
+let AUTH={};
+/* 연장코드용 마스터 열쇠 — 계산기 파일과 반드시 같아야 함 */
+const _MK=[9,59,60,63,14,40,63,63,105,108,111,121,23,59,41,46,63,40,121,17,63,35,121,104,106,104,108];
+const MASTER=_MK.map(c=>String.fromCharCode(c^0x5A)).join('');
+function pad2(n){ return String(n).padStart(2,'0'); }
+function challengeNo(){ return (AUTH.dev||'0000') + pad2((AUTH.n||0)%100); }
+function extCode(chal, months){
+  const h=sha256(MASTER+'|'+chal+'|'+months);
+  return String(parseInt(h.slice(0,8),16)%1000000).padStart(6,'0');
+}
+function extLockLeft(){
+  const t=Number(AUTH.lk||0);
+  return t>Date.now() ? Math.ceil((t-Date.now())/1000) : 0;
+}
+function applyExtCode(raw){
+  const wait=extLockLeft();
+  if(wait>0) return {ok:false, msg:'입력이 잠겼습니다. '+Math.ceil(wait/60)+'분 뒤에 다시 해보세요'};
+  const v=String(raw||'').replace(/\D/g,'');
+  if(v.length!==6) return {ok:false, msg:'연장코드는 숫자 6자리입니다'};
+  const chal=challengeNo();
+  for(let m=1;m<=12;m++){
+    if(extCode(chal,m)===v){
+      AUTH.months=m;
+      AUTH.exp=addMonths(m);
+      AUTH.since=new Date().toISOString();
+      AUTH.n=((AUTH.n||0)+1)%100;
+      AUTH.fc=0; AUTH.lk=0;
+      saveAuth(); rememberUnlock(true);
+      return {ok:true, msg:m+'개월 연장되었습니다 — '+expText()};
+    }
+  }
+  AUTH.fc=(Number(AUTH.fc)||0)+1;
+  if(AUTH.fc>=5){ AUTH.fc=0; AUTH.lk=Date.now()+5*60*1000; saveAuth();
+    return {ok:false, msg:'여러 번 틀렸습니다. 5분 뒤에 다시 해보세요'}; }
+  saveAuth();
+  return {ok:false, msg:'코드가 맞지 않습니다 ('+(5-AUTH.fc)+'번 남음)'};
+}
+function loadAuth(){
+  let a={};
+  try{ a=JSON.parse(localStorage.getItem(AKEY)||'{}'); }catch(e){ a={}; }
+  // 옛 방식(평문)으로 저장돼 있으면 자동으로 바꿔 준다
+  let moved=false;
+  if(a.u!==undefined){ delete a.u; moved=true; }
+  if(a.uo!==undefined){ delete a.uo; moved=true; }
+  if(a.a!==undefined){ a.ah=pwHash(a.a); delete a.a; moved=true; }
+  if(!a.dev){ a.dev=String(Math.floor(1000+Math.random()*9000)); moved=true; }
+  if(a.n===undefined){ a.n=0; moved=true; }
+  if(moved){ try{ localStorage.setItem(AKEY, JSON.stringify(a)); }catch(e){} }
+  return a;
+}
+function adminMatch(v){ return !!AUTH.ah && pwHash(String(v).trim())===AUTH.ah; }
+function saveAuth(){ localStorage.setItem(AKEY, JSON.stringify(AUTH)); }
+function addMonths(n){
+  n=Number(n)||0;
+  if(!n) return '';
+  const d=new Date(); d.setMonth(d.getMonth()+n); d.setHours(23,59,59,999);
+  return d.toISOString();
+}
+function expDate(){ return AUTH.exp ? new Date(AUTH.exp) : null; }
+function isExpired(){ return AUTH.exp ? Date.now() > new Date(AUTH.exp).getTime() : false; }
+function daysLeft(){ return AUTH.exp ? Math.ceil((new Date(AUTH.exp).getTime()-Date.now())/86400000) : null; }
+function expText(){
+  if(!AUTH.exp) return '기간 제한 없음';
+  const d=expDate(), left=daysLeft();
+  const s=d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate());
+  return left<0 ? s+' 만료됨' : s+'까지 (남은 기간 '+left+'일)';
+}
+function rememberUnlock(keep){
+  const token = AUTH.exp || 'none';
+  if(keep) localStorage.setItem(UKEY, token); else sessionStorage.setItem(UKEY, token);
+}
+function unlockValid(){
+  const t = localStorage.getItem(UKEY) || sessionStorage.getItem(UKEY);
+  if(!t) return false;
+  if(t !== (AUTH.exp || 'none')) return false;
+  return !isExpired();
+}
+function showApp(){
+  $('#gate').classList.add('off');
+  document.documentElement.style.overflow='';
+}
+function openGate(){
+  const g=$('#gate');
+  g.classList.remove('off');
+  document.documentElement.style.overflow='hidden';
+  $('#gLogin').style.display='block';
+  const bad=isExpired();
+  $('#gWarn').style.display = bad ? 'block' : 'none';
+  if(bad) $('#gWarn').textContent = '사용기간이 '+expText().replace(' 만료됨','')+'에 끝났습니다. 아래에서 연장코드를 받아 넣어 주세요.';
+  $('#gTitle').textContent = bad ? '사용기간이 끝났습니다' : '암호를 입력하세요';
+  $('#gDesc').textContent = [SET.site,SET.org].filter(Boolean).join(' · ') || '현장 안전관리 일지';
+  $('#gMsg').textContent=''; $('#gCodeMsg').textContent='';
+  paintChallenge();
+  setTimeout(()=>$('#gPw').focus(),120);
+}
+$('#gEnter').onclick=()=>{
+  const v=$('#gPw').value.trim(), keep=$('#gKeep').checked;
+  if(!v){ $('#gMsg').textContent='암호를 넣어 주세요'; return; }
+  if(adminMatch(v)){
+    if(isExpired()){
+      $('#gMsg').textContent='사용기간이 끝났습니다. 아래에서 연장코드를 받아 넣어 주세요';
+      $('#gPw').value=''; return;
+    }
+    rememberUnlock(keep); showApp(); $('#gPw').value=''; return;
+  }
+  $('#gMsg').textContent='암호가 맞지 않습니다';
+  $('#gPw').value=''; $('#gPw').focus();
+};
+$('#gPw').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#gEnter').click(); });
+
+function paintChallenge(){
+  const c=challengeNo();
+  const el1=$('#gChal'), el2=$('#aChal');
+  if(el1) el1.textContent=c;
+  if(el2) el2.textContent=c;
+}
+function runExtCode(inputSel, msgSel){
+  const r=applyExtCode($(inputSel).value);
+  $(inputSel).value='';
+  paintChallenge(); paintAuth();
+  if(msgSel){ $(msgSel).textContent = r.ok ? '' : r.msg; }
+  toast(r.msg);
+  if(r.ok){
+    showApp();
+    if($('#gate').classList.contains('off')) go('set');
+  }
+}
+/* 6자리가 채워지면 버튼 없이 저절로 연장된다 */
+function autoExt(inputSel, msgSel){
+  const el=$(inputSel); if(!el) return;
+  const fire=()=>{
+    const v=el.value.replace(/\D/g,'');
+    if(v!==el.value) el.value=v;
+    if(v.length===6){ el.blur(); runExtCode(inputSel, msgSel); }
+  };
+  el.addEventListener('input', fire);
+  el.addEventListener('paste', ()=>setTimeout(fire,0));
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') fire(); });
+}
+autoExt('#gCode','#gCodeMsg');
+autoExt('#aCode');
+
+function paintAuth(){
+  $('#aMonths').value = String(AUTH.months || 0);
+  const start = AUTH.since ? fmtDate(AUTH.since) : '-';
+  $('#aState').innerHTML = AUTH.ah
+    ? '암호 <b>보관 안 함(암호화 저장)</b><br>사용기간 <b>'+esc(expText())+'</b><br>마지막 설정 '+start
+    : '암호 없이 바로 열립니다.<br>잠그시려면 아래 <b>암호 변경</b> 칸에 암호를 넣고 <b>암호 · 기간 적용</b>을 누르세요.';
+  const el=$('#aChal'); if(el) el.textContent=challengeNo();
+  paintDBar();
+}
+$('#aEye').onclick=()=>{
+  const i=$('#aAdmin');
+  const show = i.type==='password';
+  i.type = show ? 'text' : 'password';
+  $('#aEye').textContent = show ? '숨기기' : '보기';
+};
+function adminOk(){
+  const v=$('#aAdmin').value.trim();
+  if(!AUTH.ah) return true;   // 아직 암호를 안 정했으면 그냥 통과
+  if(!v){ toast('암호를 넣어 주세요'); $('#aAdmin').focus(); return false; }
+  if(!adminMatch(v)){
+    toast('암호가 맞지 않습니다 ('+v.length+'자 입력됨)');
+    $('#aAdmin').value=''; $('#aAdmin').focus();
+    return false;
+  }
+  return true;
+}
+$('#aForgot').onclick=()=>{
+  if(!confirm('암호를 잊으셨을 때만 쓰세요.\n\n암호를 지워 앞으로 암호 없이 열리게 합니다.\n저장된 안전조치 기록은 그대로 남습니다.\n\n계속할까요?')) return;
+  if(!confirm('한 번 더 확인합니다. 암호를 초기화할까요?')) return;
+  const keep={dev:AUTH.dev, n:AUTH.n};
+  AUTH=Object.assign({}, keep); saveAuth();
+  localStorage.removeItem(UKEY); sessionStorage.removeItem(UKEY);
+  $('#aAdmin').value=''; paintAuth(); paintChallenge();
+  toast('암호를 지웠습니다. 이제 암호 없이 열립니다');
+};
+$('#aApply').onclick=()=>{
+  if(!adminOk()) return;
+  const m=$('#aMonths').value, na=$('#aNewAdmin').value.trim();
+  AUTH.months=Number(m); AUTH.exp=addMonths(m); AUTH.since=new Date().toISOString();
+  if(na) AUTH.ah=pwHash(na);
+  saveAuth(); rememberUnlock(true); paintAuth();
+  $('#aNewAdmin').value=''; $('#aAdmin').value='';
+  toast('적용했습니다 — '+expText());
+};
+$('#aExtend').onclick=()=>{
+  if(!adminOk()) return;
+  AUTH.exp=addMonths(AUTH.months||6); AUTH.since=new Date().toISOString();
+  saveAuth(); rememberUnlock(true); paintAuth();
+  $('#aAdmin').value='';
+  toast('연장했습니다 — '+expText());
+};
+$('#aReset').onclick=()=>{
+  if(!adminOk()) return;
+  if(!confirm('암호를 지웁니다. 앞으로 암호 없이 바로 열립니다.\n저장된 기록은 그대로입니다. 계속할까요?')) return;
+  const keep={dev:AUTH.dev, n:AUTH.n};
+  AUTH=Object.assign({}, keep); saveAuth();
+  localStorage.removeItem(UKEY); sessionStorage.removeItem(UKEY);
+  $('#aAdmin').value=''; paintAuth(); paintChallenge();
+  toast('암호를 지웠습니다. 이제 암호 없이 열립니다');
+};
+
+/* ═══════════ 연장 요청 ═══════════ */
+/* ▼ 관리자 연락처 — 여기만 채우면 연장 요청 버튼이 바로 연결됩니다 ▼ */
+const VENDOR = {
+  kakao: '',                   /* ★ 가장 간편 — 카카오톡 채널 채팅 주소 예: 'http://pf.kakao.com/_abcdxi/chat' */
+  tel  : '',                   /* 예: '010-1234-5678' — 비우면 받는 사람 없이 문자창만 열립니다 */
+  mail : 'cys9228@naver.com'
+};
+
+function fillMonthSel(sel){
+  const el=$(sel); if(!el) return;
+  let h='';
+  for(let m=1;m<=12;m++) h+='<option value="'+m+'"'+(m===6?' selected':'')+'>'+m+'개월</option>';
+  el.innerHTML=h;
+}
+function reqText(months){
+  const where=[SET.site,SET.org].filter(Boolean).join(' · ');
+  return '[안전관리 일지 기간연장]\n요청번호 '+challengeNo()+'\n연장 '+months+'개월'
+       + (where ? '\n현장 '+where : '')
+       + '\n\n연장코드 6자리를 보내주세요.';
+}
+function copyText(t, quiet){
+  const done=()=>{ if(!quiet) toast('복사했습니다'); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(done).catch(()=>fallbackCopy(t,quiet));
+  } else fallbackCopy(t,quiet);
+}
+function fallbackCopy(t,quiet){
+  const ta=document.createElement('textarea');
+  ta.value=t; ta.setAttribute('readonly','');
+  ta.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,t.length);
+  try{ document.execCommand('copy'); if(!quiet) toast('복사했습니다'); }
+  catch(e){ toast('요청번호 '+challengeNo()+'를 관리자에게 알려주세요'); }
+  document.body.removeChild(ta);
+}
+function openLink(href){
+  const a=document.createElement('a');
+  a.href=href; a.rel='noopener'; a.style.display='none';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function monthsOf(sel){ const el=$(sel); return el ? (Number(el.value)||6) : 6; }
+function sendSmsReq(sel){
+  const body=reqText(monthsOf(sel));
+  copyText(body, true);
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  openLink('sms:'+(VENDOR.tel||'')+(ios?'&':'?')+'body='+encodeURIComponent(body));
+}
+/* 연장 요청 — 카카오톡 채널이 있으면 채팅창이 열리고 요청 내용은 미리 복사된다 */
+function sendReq(sel){
+  const body=reqText(monthsOf(sel));
+  if(VENDOR.kakao){
+    copyText(body, true);
+    openLink(VENDOR.kakao);
+    toast('요청 내용을 복사했습니다. 채팅창에 붙여넣기 하세요');
+    return;
+  }
+  if(VENDOR.tel){ sendSmsReq(sel); toast('요청 내용을 복사했습니다'); return; }
+  sendMailReq(sel);
+}
+function sendMailReq(sel){
+  const body=reqText(monthsOf(sel));
+  openLink('mailto:'+VENDOR.mail
+    +'?subject='+encodeURIComponent('기간연장 요청 '+challengeNo())
+    +'&body='+encodeURIComponent(body));
+}
+function wireExt(chalSel, monSel, sendSel, smsSel, mailSel){
+  fillMonthSel(monSel);
+  const c=$(chalSel); if(c) c.onclick=()=>copyText(challengeNo());
+  const b=$(sendSel); if(b) b.onclick=()=>sendReq(monSel);
+  const t=$(smsSel);  if(t) t.onclick=()=>{ sendSmsReq(monSel); toast('요청 내용을 복사했습니다'); };
+  const m=$(mailSel); if(m) m.onclick=()=>sendMailReq(monSel);
+}
+wireExt('#gChal','#gMonths','#gSend','#gSendSms','#gSendMail');
+wireExt('#aChal','#aMonthsReq','#aSend','#aSendSms','#aSendMail');
+
+/* 남은 기간 알림 띠 — 30일 이하부터 보입니다 */
+function paintDBar(){
+  const bar=$('#dBar'), txt=$('#dBarTxt');
+  if(!bar||!txt) return;
+  const left=daysLeft();
+  if(left===null || left>30){ bar.classList.remove('on','hot'); return; }
+  bar.classList.add('on');
+  bar.classList.toggle('hot', left<=7);
+  txt.innerHTML = left<0
+    ? '사용기간이 끝났습니다. 연장코드를 받아 넣어 주세요.'
+    : '사용기간이 <b>'+left+'일</b> 남았습니다. 미리 연장해 두세요.';
+}
+$('#dBarGo').onclick=()=>{
+  go('set');
+  setTimeout(()=>{ const el=$('#aChal'); if(el) scrollTo_(el,{block:'center'}); },140);
+};
+
+/* 문자·카톡으로 받은 링크(...?ext=123456)를 누르면 저절로 연장됩니다 */
+function applyLinkCode(){
+  const m=(location.search+location.hash).match(/ext=(\d{6})/);
+  if(!m) return;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+  if(!AUTH.ah) return;
+  const r=applyExtCode(m[1]);
+  paintChallenge(); paintAuth(); paintDBar();
+  toast(r.msg);
+  if(r.ok && unlockValid()) showApp();
+}
+
+/* ═══════════ 시작 ═══════════ */
+(async function init(){
+  AUTH=loadAuth();
+  if(!AUTH.ah || unlockValid()) showApp(); else openGate();
+  renderOptions();
+  resetForm();
+  paintAuth(); paintChallenge(); paintDBar(); applyLinkCode();
+  const mk=new Date().getFullYear()+'-'+pad(new Date().getMonth()+1);
+  $('#fMonth').value=mk; $('#pMonth').value=mk;
+  await refreshList();
+  if(!SET.site && (!AUTH.ah || unlockValid())) setTimeout(()=>toast('맨 위 칸에 현장명을 넣고 저장하세요'),700);
+})();
+</script>
+</body>
+</html>
